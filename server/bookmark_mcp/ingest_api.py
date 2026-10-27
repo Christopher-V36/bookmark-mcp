@@ -15,10 +15,11 @@ import json
 import logging
 import threading
 from collections.abc import Callable
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 
 from bookmark_mcp import __version__
 from bookmark_mcp.db import Database
+from bookmark_mcp.httpserver import LocalHTTPServer
 from bookmark_mcp.ingest import IngestSummary, ingest_event, is_supported
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class IngestServer:
         self.token = token
         self.on_ingested = on_ingested
         handler = type("BoundHandler", (_Handler,), {"app": self})
-        self.httpd = ThreadingHTTPServer((host, port), handler)
+        self.httpd = LocalHTTPServer((host, port), handler)
         self.httpd.daemon_threads = True
         self._thread: threading.Thread | None = None
 

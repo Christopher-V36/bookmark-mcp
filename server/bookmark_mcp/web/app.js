@@ -118,7 +118,7 @@ function firstLine(text, max = 140) {
 
 function readHash() {
   const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
-  state.view = ["next", "board", "posts"].includes(path) ? path : "next";
+  state.view = ["next", "board", "posts", "phone"].includes(path) ? path : "next";
   const params = new URLSearchParams(query);
   state.filters = {};
   for (const key of FILTER_KEYS) if (params.get(key)) state.filters[key] = params.get(key);
@@ -132,6 +132,8 @@ function go(view, filters = state.filters) {
 }
 
 function setFilter(key, value) {
+  $(".rail").classList.remove("show-filters");
+  $(".filters-toggle").setAttribute("aria-expanded", "false");
   const filters = { ...state.filters };
   if (value === undefined || value === "" || filters[key] === value) delete filters[key];
   else filters[key] = value;
@@ -398,6 +400,49 @@ async function renderBoard() {
   );
 }
 
+async function renderPhone() {
+  let info;
+  try {
+    info = await api("/api/phone");
+  } catch {
+    $("#view").replaceChildren(h("h1", { class: "page-title" }, "You're already on another device"),
+      h("p", { class: "lede" }, "The phone setup is shown on the computer that runs bookmark-mcp."));
+    return;
+  }
+  const parts = [h("h1", { class: "page-title" }, "Use on your phone")];
+  if (!info.lan) {
+    parts.push(
+      h("p", { class: "lede" }, "Right now the app only accepts this computer. To open it on your phone, stop it (Ctrl+C in its window) and start it again with:"),
+      h("pre", { class: "command" }, info.command),
+      h("p", { class: "section-hint" }, "Then come back to this page for the QR code. Other devices have to log in with a code, so people on your Wi-Fi can't see your posts."),
+    );
+  } else if (!info.urls.length) {
+    parts.push(h("p", { class: "lede" }, "This computer has no network address. Connect it to Wi-Fi, then restart the app."));
+  } else {
+    const port = new URL(info.urls[0]).port;
+    const labelFor = (entry) => entry.kind === "tailscale"
+      ? ["Anywhere (Tailscale)", "Works away from home. Your phone needs the free Tailscale app, signed in to the same account as this computer."]
+      : ["Home Wi-Fi", "Your phone must be on the same Wi-Fi as this computer."];
+    parts.push(
+      h("p", { class: "lede" }, "Scan one code with your phone's camera. It opens bookmark-mcp and logs the phone in for 30 days. Then use your browser's Add to Home screen to open it like an app."),
+      h("div", { class: "phone-setup" }, info.entries.map((entry) => {
+        const [title, hint] = labelFor(entry);
+        return h("section", { class: "qr-card" },
+          h("h2", { class: "section-title" }, title),
+          h("img", { class: "qr", src: entry.qr, alt: `QR code: ${title}` }),
+          h("p", { class: "section-hint" }, hint),
+          h("p", { class: "section-hint" }, "Or open ", h("b", {}, entry.url), " and type the code ", h("b", {}, info.code), "."));
+      })),
+      h("h2", { class: "section-title" }, "Good to know"),
+      h("ul", { class: "notes" },
+        h("li", {}, "Your posts stay on this computer, so it has to be on and running bookmark-mcp web --lan."),
+        h("li", {}, "Home Wi-Fi only works if Windows treats this Wi-Fi as a Private network (Settings, Network & internet, Wi-Fi, your network). Tailscale works either way."),
+        h("li", {}, `If Windows asks whether Python may use the network, allow it on private networks. The app uses port ${port}.`)),
+    );
+  }
+  $("#view").replaceChildren(...parts);
+}
+
 async function changeStatus(id, status) {
   try {
     await api(`/api/posts/${encodeURIComponent(id)}/status`, { method: "PUT", body: { status } });
@@ -588,6 +633,7 @@ async function refresh({ keepDrawer = false } = {}) {
     renderRail();
     if (state.view === "next") await renderNext();
     else if (state.view === "board") await renderBoard();
+    else if (state.view === "phone") await renderPhone();
     else await renderPosts();
     if (keepDrawer && state.selected) await openPost(state.selected, { quiet: true });
   } catch (error) {
@@ -625,5 +671,13 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+$(".filters-toggle").addEventListener("click", (event) => {
+  const open = $(".rail").classList.toggle("show-filters");
+  event.currentTarget.setAttribute("aria-expanded", String(open));
+});
+
 readHash();
 refresh();
+api("/api/phone").catch(() => {
+  for (const el of document.querySelectorAll(".phone-link")) el.hidden = true;
+});

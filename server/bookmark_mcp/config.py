@@ -38,9 +38,8 @@ def port() -> int:
     return int(os.environ.get("BOOKMARK_MCP_PORT", DEFAULT_PORT))
 
 
-def token() -> str:
-    """Return the pairing token, creating one on first use."""
-    path = data_dir() / "token.txt"
+def _secret(filename: str) -> str:
+    path = data_dir() / filename
     if path.exists():
         value = path.read_text(encoding="utf-8").strip()
         if value:
@@ -48,3 +47,13 @@ def token() -> str:
     value = secrets.token_urlsafe(24)
     path.write_text(value, encoding="utf-8")
     return value
+
+
+def token() -> str:
+    """Return the extension pairing token, creating one on first use."""
+    return _secret("token.txt")
+
+
+def web_code() -> str:
+    """Return the code other devices (your phone) use to log in to the web app."""
+    return _secret("web_code.txt")

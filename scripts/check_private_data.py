@@ -17,7 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 FORBIDDEN_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".db-wal", ".db-shm", ".har", ".zip"}
-ALLOWED_IMAGES = re.compile(r"^extension/static/icons/\d+\.png$")
+ALLOWED_IMAGES = re.compile(
+    r"^(extension/static/icons/\d+\.png|server/bookmark_mcp/web/icon-\d+\.png)$"
+)
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 SECRET_PATTERNS = {

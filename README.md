@@ -136,6 +136,17 @@ saved, and it shows the same data Claude sees:
 Keyboard: `/` searches, `j` / `k` move through the list, `Enter` opens a post, `Esc` closes it.
 
 While it runs it also receives captures from the extension, so you only need this one command.
+
+**On your phone:** run `bookmark-mcp web --lan` and open **Use on your phone** in the app.
+
+- Scan the QR code. Phones log in with a code (the QR includes it) and stay signed in for 30
+  days. Nobody else on your network can see anything without the code.
+- In your phone's browser, use **Add to Home screen** to open it like an app.
+- **Home Wi-Fi** works when Windows treats that Wi-Fi as a *Private* network.
+- **Anywhere:** install the free [Tailscale](https://tailscale.com) app on your computer and
+  phone. The page then shows a second QR code for your Tailscale address.
+
+Your computer must be on, because the data stays there.
 It is local only: it listens on 127.0.0.1, refuses requests from other websites, and loads no
 fonts or scripts from the internet.
 

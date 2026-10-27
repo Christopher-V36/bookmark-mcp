@@ -65,7 +65,12 @@ def serve(port: int | None) -> None:
 @cli.command()
 @click.option("--port", type=int, default=None, help="Web app port (default 48924).")
 @click.option("--no-browser", is_flag=True, help="Don't open the browser.")
-def web(port: int | None, no_browser: bool) -> None:
+@click.option(
+    "--lan",
+    is_flag=True,
+    help="Also allow your phone and other devices on your network (they log in with a code).",
+)
+def web(port: int | None, no_browser: bool, lan: bool) -> None:
     """Open the web app to browse and manage your saved posts.
 
     It also receives captures from the browser extension while it runs.
@@ -86,8 +91,24 @@ def web(port: int | None, no_browser: bool) -> None:
     except OSError:
         receiving = "(another bookmark-mcp process is receiving captures)"
     web_port = port or int(os.environ.get("BOOKMARK_MCP_WEB_PORT", DEFAULT_WEB_PORT))
-    server = WebServer(db, port=web_port)
+    server = WebServer(db, port=web_port, lan=lan)
     click.echo(f"bookmark-mcp web app on {server.url} {receiving}. Ctrl+C to stop.")
+    if lan:
+        info = server.phone_info()
+        if info["login_url"]:
+            import segno
+
+            for entry in info["entries"]:
+                where = (
+                    "anywhere, with Tailscale on both devices"
+                    if entry["kind"] == "tailscale"
+                    else "on the same Wi-Fi"
+                )
+                click.echo(f"\nOn your phone ({where}), scan:\n")
+                segno.make(entry["login_url"], error="m").terminal(compact=True)
+                click.echo(f"or open {entry['url']} and type the code: {info['code']}")
+        else:
+            click.echo("No network address found: is this computer connected to Wi-Fi?")
     if not no_browser:
         webbrowser.open(server.url)
     try:

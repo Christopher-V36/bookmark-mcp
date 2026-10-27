@@ -103,3 +103,12 @@ def test_bad_json_and_unsupported_operation(server, db):
 def test_no_cors_preflight(server):
     status, _ = _request(server, "OPTIONS", "/ingest", headers={"Origin": "https://evil.example"})
     assert status == 403
+
+
+def test_a_second_instance_cannot_take_the_same_port(db):
+    first = IngestServer(db, TOKEN, port=0)
+    try:
+        with pytest.raises(OSError):
+            IngestServer(db, TOKEN, port=first.port)
+    finally:
+        first.httpd.server_close()

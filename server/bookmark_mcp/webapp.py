@@ -4,8 +4,10 @@ Serves a small single-page interface plus a JSON API on 127.0.0.1. It reads and
 writes the same database the MCP server uses, and shows the images downloaded
 to the local media folder.
 
-Security (local only, but browsers visit hostile pages too):
-- binds to 127.0.0.1 and refuses non-loopback ``Host`` headers (DNS rebinding);
+Security (browsers visit hostile pages too):
+- by default binds to 127.0.0.1 and refuses non-loopback ``Host`` headers (DNS rebinding);
+- with ``--lan`` other devices (your phone) can connect, but only after logging in
+  with the web code (QR link or typed), which sets an HttpOnly, SameSite=Strict cookie;
 - refuses cross-site API calls (``Sec-Fetch-Site``/``Origin``) and requires a
   custom header + JSON body for every change, so other websites cannot post;
 - post content is rendered as text by the front end, and a strict
@@ -14,18 +16,26 @@ Security (local only, but browsers visit hostile pages too):
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import ipaddress
 import json
 import logging
 import mimetypes
 import re
+import socket
 import sqlite3
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import time
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
+
+import segno
 
 from bookmark_mcp import __version__, config, triage
 from bookmark_mcp.db import Database, fts_query
+from bookmark_mcp.httpserver import LocalHTTPServer
 from bookmark_mcp.tools import resolve_collection
 
 logger = logging.getLogger(__name__)
@@ -33,6 +43,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_WEB_PORT = 48924
 STATIC_DIR = Path(__file__).parent / "web"
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "[::1]")
+LOOPBACK_CLIENTS = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+SESSION_COOKIE = "bmcp_session"
+SESSION_DAYS = 30
 CHANGE_HEADER = "X-Bookmark-Mcp"
 MAX_BODY = 64 * 1024
 SORTS = {
@@ -44,7 +57,7 @@ SORTS = {
 CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; "
     "img-src 'self' data:; media-src 'self' https://video.twimg.com; connect-src 'self'; "
-    "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 )
 
 
@@ -275,12 +288,80 @@ def update_labels(db: Database, post_id: str, body: dict) -> dict:
 # --- HTTP ------------------------------------------------------------------------
 
 
+TAILSCALE_NET = ipaddress.ip_network("100.64.0.0/10")
+
+
+def lan_addresses() -> list[str]:
+    """Addresses a phone can reach: the main network (Wi-Fi) and Tailscale.
+
+    Virtual adapters (VirtualBox, Hyper-V, WSL) are skipped: a phone can't reach them.
+    """
+    usable: list[str] = []
+    try:  # the address of the interface used for outgoing traffic; no packet is sent
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 80))
+            primary = probe.getsockname()[0]
+        ip = ipaddress.ip_address(primary)
+        if ip.is_private and not ip.is_loopback and not ip.is_link_local:
+            usable.append(primary)
+    except OSError:
+        pass
+    try:
+        others = socket.gethostbyname_ex(socket.gethostname())[2]
+    except OSError:
+        others = []
+    usable += [a for a in others if ipaddress.ip_address(a) in TAILSCALE_NET]
+    return list(dict.fromkeys(usable))
+
+
+def qr_svg_data_uri(text: str) -> str:
+    return segno.make(text, error="m").svg_data_uri(scale=6, border=2, dark="#14302b")
+
+
 class WebServer:
-    def __init__(self, db: Database, port: int = DEFAULT_WEB_PORT, host: str = "127.0.0.1"):
+    def __init__(
+        self,
+        db: Database,
+        port: int = DEFAULT_WEB_PORT,
+        host: str = "127.0.0.1",
+        lan: bool = False,
+        code: str | None = None,
+        trust_loopback: bool = True,
+    ):
         self.db = db
+        self.lan = lan
+        self.code = code or (config.web_code() if lan else "")
+        self.trust_loopback = trust_loopback
+        self.session = hmac.new(self.code.encode(), b"session", hashlib.sha256).hexdigest()
         handler = type("BoundWebHandler", (_Handler,), {"app": self})
-        self.httpd = ThreadingHTTPServer((host, port), handler)
+        self.httpd = LocalHTTPServer(("0.0.0.0" if lan else host, port), handler)
         self.httpd.daemon_threads = True
+
+    def phone_info(self) -> dict:
+        if not self.lan:
+            return {"lan": False, "urls": [], "command": "bookmark-mcp web --lan"}
+        entries = []
+        for address in lan_addresses():
+            url = f"http://{address}:{self.port}/"
+            login = f"{url}login?code={quote(self.code)}"
+            in_tailscale = ipaddress.ip_address(address) in TAILSCALE_NET
+            entries.append(
+                {
+                    "kind": "tailscale" if in_tailscale else "wifi",
+                    "url": url,
+                    "login_url": login,
+                    "qr": qr_svg_data_uri(login),
+                }
+            )
+        first = entries[0] if entries else None
+        return {
+            "lan": True,
+            "urls": [e["url"] for e in entries],
+            "entries": entries,
+            "code": self.code,
+            "login_url": first["login_url"] if first else None,
+            "qr": first["qr"] if first else None,
+        }
 
     @property
     def port(self) -> int:
@@ -339,7 +420,23 @@ class _Handler(BaseHTTPRequestHandler):
 
     # --- checks ---------------------------------------------------------------------
 
+    def _is_local(self) -> bool:
+        return self.app.trust_loopback and self.client_address[0] in LOOPBACK_CLIENTS
+
+    def _logged_in(self) -> bool:
+        if self._is_local():
+            return True
+        if not self.app.lan:
+            return False
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            name, _, value = part.strip().partition("=")
+            if name == SESSION_COOKIE and hmac.compare_digest(value, self.app.session):
+                return True
+        return False
+
     def _host_ok(self) -> bool:
+        if not self._is_local():
+            return True  # other devices must log in instead (see _logged_in)
         host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
         if host not in LOOPBACK_HOSTS:
             self._error(403, "forbidden host")
@@ -350,13 +447,36 @@ class _Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") in ("cross-site", "same-site"):
             return False
         origin = self.headers.get("Origin")
-        if origin:
-            parsed = urlparse(origin)
-            if parsed.hostname not in ("127.0.0.1", "localhost", "::1") or (
-                parsed.port != self.app.port
-            ):
-                return False
+        if origin and urlparse(origin).netloc != (self.headers.get("Host") or ""):
+            return False
         return True
+
+    def _redirect(self, location: str, cookie: str | None = None) -> None:
+        self.send_response(303)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _login(self, query: dict) -> None:
+        code = query.get("code", "")
+        if code and self.app.lan and hmac.compare_digest(code.strip(), self.app.code):
+            cookie = (
+                f"{SESSION_COOKIE}={self.app.session}; Path=/; HttpOnly; "
+                f"SameSite=Strict; Max-Age={SESSION_DAYS * 86400}"
+            )
+            self._redirect("/", cookie)
+            return
+        if code:
+            time.sleep(1)  # slow down guessing
+            self._redirect("/login?error=1")
+            return
+        page = (STATIC_DIR / "login.html").read_text(encoding="utf-8")
+        if query.get("error"):
+            page = page.replace("hidden data-error", "data-error")
+        self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
 
     def _read_json(self) -> dict:
         if self.headers.get(CHANGE_HEADER) != "1":
@@ -387,14 +507,32 @@ class _Handler(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         path = parsed.path
+        query = {k: v[-1] for k, v in parse_qs(parsed.query).items()}
+        if path == "/login":
+            self._login(query)
+            return
+        logged_in = self._logged_in()
         if path.startswith("/api/"):
+            if not logged_in:
+                self._error(401, "log in first")
+                return
             if not self._same_origin():
                 self._error(403, "cross-site request refused")
                 return
-            query = {k: v[-1] for k, v in parse_qs(parsed.query).items()}
+            if path == "/api/phone":
+                if not self._is_local():
+                    self._error(403, "only available on the computer running the app")
+                    return
+                self._json(200, self.app.phone_info())
+                return
             self._handle_api("GET", path, query)
         elif path.startswith("/media/"):
+            if not logged_in:
+                self._error(401, "log in first")
+                return
             self._serve_media(unquote(path[len("/media/") :]))
+        elif not logged_in and ("." not in Path(path).name or path.endswith(".html")):
+            self._redirect("/login")
         else:
             self._serve_static(path)
 
@@ -415,6 +553,9 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _change(self, method: str) -> None:
         if not self._host_ok():
+            return
+        if not self._logged_in():
+            self._error(401, "log in first")
             return
         if not self._same_origin():
             self._error(403, "cross-site request refused")

@@ -6,6 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <title>bookmark-mcp</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="theme-color" content="#14302b" />
     <link rel="stylesheet" href="/app.css" />
     <script type="module" src="/app.js"></script>
   </head>
@@ -21,7 +24,9 @@
           <li><a href="#/next" data-view="next">Next up</a></li>
           <li><a href="#/board" data-view="board">Board</a></li>
           <li><a href="#/posts" data-view="posts">All posts</a></li>
+          <li class="phone-link"><a href="#/phone" data-view="phone">Use on your phone</a></li>
         </ul>
+        <button class="filters-toggle" type="button" aria-expanded="false" aria-controls="filters">Filters</button>
         <div id="filters" class="filters"></div>
         <p id="sync" class="sync"></p>
       </nav>
