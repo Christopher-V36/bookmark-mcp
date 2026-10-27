@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Node / extension
+node_modules/
+extension/dist/
+*.zip
+
+# Personal data must never be committed
+data/
+*.db
+*.db-wal
+*.db-shm
+media/
+token.txt
+*.export.json
+bookmarks*.json
+likes*.json
+
+# Editors / OS
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

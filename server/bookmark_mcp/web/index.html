@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>bookmark-mcp</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/app.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#view">Skip to content</a>
+    <div class="shell">
+      <nav class="rail" aria-label="Views and filters">
+        <a class="brand" href="#/next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>
+          <span>bookmark-mcp</span>
+        </a>
+        <ul class="views">
+          <li><a href="#/next" data-view="next">Next up</a></li>
+          <li><a href="#/board" data-view="board">Board</a></li>
+          <li><a href="#/posts" data-view="posts">All posts</a></li>
+        </ul>
+        <div id="filters" class="filters"></div>
+        <p id="sync" class="sync"></p>
+      </nav>
+
+      <main id="view" class="view" tabindex="-1"></main>
+
+      <aside id="drawer" class="drawer" aria-label="Post details" hidden></aside>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

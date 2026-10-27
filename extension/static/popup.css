@@ -1,0 +1,57 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #656d76;
+  --line: #d0d7de;
+  --accent: #1a73e8;
+  --ok: #1a7f37;
+  --bad: #cf222e;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161b22;
+    --fg: #e6edf3;
+    --muted: #8d96a0;
+    --line: #30363d;
+    --accent: #4493f8;
+    --ok: #3fb950;
+    --bad: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  width: 340px;
+  padding: 14px 16px;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+h1 { font-size: 15px; margin: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 6px; }
+section { border-top: 1px solid var(--line); padding: 10px 0; }
+.muted { color: var(--muted); margin: 4px 0; }
+.error { color: var(--bad); margin: 6px 0; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+.pill.bad { color: var(--bad); border-color: var(--bad); }
+.row { display: flex; gap: 8px; }
+button {
+  font: inherit; border-radius: 6px; padding: 5px 12px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+}
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 0 6px; }
+.stats dt { color: var(--muted); font-size: 11px; }
+.stats dd { margin: 0; font-size: 18px; font-weight: 600; }
+.toggles { display: grid; gap: 4px; }
+.field { display: grid; gap: 3px; margin-bottom: 8px; }
+input[type="url"], input[type="password"] {
+  font: inherit; padding: 5px 7px; border-radius: 6px;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+}
+code { font-size: 12px; }
+footer { border-top: 1px solid var(--line); padding-top: 8px; font-size: 12px; }

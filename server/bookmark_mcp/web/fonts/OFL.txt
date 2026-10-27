@@ -1,0 +1,5 @@
+Schibsted Grotesk (c) 2023 The Schibsted Grotesk Project Authors (https://github.com/schibsted/schibsted-grotesk)
+Literata (c) 2017-2022 The Literata Project Authors (https://github.com/googlefonts/literata)
+
+Both fonts are licensed under the SIL Open Font License, Version 1.1:
+https://openfontlicense.org/open-font-license-official-text/
