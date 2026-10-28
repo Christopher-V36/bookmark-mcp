@@ -28,7 +28,13 @@ const STATUSES = [
   ["done", "Done"],
   ["skipped", "Skipped"],
 ];
-const FILTER_KEYS = ["q", "collection", "intent", "status", "topic", "min_usefulness", "effort", "has_images", "sort", "hide_noise"];
+const FORMATS = [
+  ["article", "Article"],
+  ["text", "Text only"],
+  ["image", "Image"],
+  ["video", "Video"],
+];
+const FILTER_KEYS = ["q", "collection", "intent", "status", "format", "topic", "min_usefulness", "effort", "has_images", "sort", "hide_noise"];
 const PAGE = 40;
 
 const state = {
@@ -173,6 +179,11 @@ function renderRail() {
   groups.push(
     h("section", { class: "group" }, h("h2", {}, "Kind"),
       h("ul", {}, INTENTS.filter((i) => o.intents[i]).map((i) => facet(INTENT_NAMES[i], o.intents[i], "intent", i, `i-${i}`)))),
+  );
+  const formats = o.formats || {};
+  groups.push(
+    h("section", { class: "group" }, h("h2", {}, "Format"),
+      h("ul", {}, FORMATS.filter(([f]) => formats[f]).map(([f, name]) => facet(name, formats[f], "format", f)))),
   );
   groups.push(
     h("section", { class: "group" }, h("h2", {}, "Progress"),
@@ -320,10 +331,11 @@ function toolbar() {
       .map(([value, label]) => h("option", { value, selected: (f.min_usefulness || "") === value }, label)));
 
   const active = [];
-  const names = { collection: "In", intent: "Kind", status: "Progress", topic: "Topic", effort: "Effort" };
+  const names = { collection: "In", intent: "Kind", format: "Format", status: "Progress", topic: "Topic", effort: "Effort" };
+  const valueNames = { intent: Object.entries(INTENT_NAMES), format: FORMATS, status: STATUSES };
   for (const [key, label] of Object.entries(names)) {
     if (f[key]) {
-      const value = key === "intent" ? INTENT_NAMES[f[key]] : key === "status" ? STATUSES.find(([s]) => s === f[key])?.[1] : f[key];
+      const value = valueNames[key]?.find(([v]) => v === f[key])?.[1] ?? f[key];
       active.push(h("button", { class: "chip-x", onclick: () => go("posts", { ...state.filters, [key]: undefined }), "aria-label": `Remove filter ${label} ${value}` },
         `${label}: ${value}`, h("span", { "aria-hidden": "true" }, "×")));
     }

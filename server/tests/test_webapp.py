@@ -110,6 +110,24 @@ def test_posts_filters_hide_noise_and_search(web):
     assert len(data["items"]) == 2 and data["offset"] == 2
 
 
+def test_format_filter(web, db):
+    def ids(fmt):
+        _, data, _ = call(web, "GET", f"/api/posts?hide_noise=false&format={fmt}")
+        return sorted(i["id"] for i in data["items"])
+
+    assert ids("image") == ["x:100"]
+    with db.conn:  # an X Article that also has a photo counts as an article
+        db.conn.execute("UPDATE posts SET article_title='Deep dive' WHERE id='x:100'")
+    _, overview, _ = call(web, "GET", "/api/overview")
+    assert overview["formats"] == {"article": 1, "video": 1, "text": 6}
+    assert ids("article") == ["x:100"]
+    assert ids("video") == ["x:101"]
+    assert ids("image") == []
+    assert len(ids("text")) == 6 and "x:400" in ids("text")
+    status, _, _ = call(web, "GET", "/api/posts?format=podcast")
+    assert status == 400
+
+
 def test_detail_and_media(web):
     _, post, _ = call(web, "GET", "/api/posts/x:103")
     assert post["quoted"]["author"] == "carol"

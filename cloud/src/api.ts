@@ -74,6 +74,17 @@ async function topicsFor(env: Env, ids: string[]): Promise<Map<string, string[]>
   return map;
 }
 
+/**
+ * What a post mainly is, for the "format" filter (same rule as the PC's db.FORMAT_SQL):
+ * an X Article, else a post with a video or GIF, else with images, else text only.
+ */
+export const FORMATS = ['article', 'video', 'image', 'text'];
+const FORMAT_SQL =
+  "CASE WHEN p.article_title IS NOT NULL THEN 'article' " +
+  "WHEN EXISTS (SELECT 1 FROM media fm WHERE fm.post_id = p.id AND fm.kind IN ('video', 'gif')) THEN 'video' " +
+  "WHEN EXISTS (SELECT 1 FROM media fm WHERE fm.post_id = p.id AND fm.kind = 'photo') THEN 'image' " +
+  "ELSE 'text' END";
+
 export async function overview(env: Env): Promise<Row> {
   const db = env.DB;
   const counts = async (sql: string) => {
@@ -101,6 +112,10 @@ export async function overview(env: Env): Promise<Row> {
     usefulness: await counts('SELECT usefulness AS k, COUNT(*) AS n FROM labels GROUP BY usefulness'),
     statuses: await counts('SELECT status AS k, COUNT(*) AS n FROM labels GROUP BY status'),
     efforts: await counts('SELECT effort AS k, COUNT(*) AS n FROM labels GROUP BY effort'),
+    formats: await counts(
+      `SELECT ${FORMAT_SQL} AS k, COUNT(*) AS n FROM posts p
+       WHERE EXISTS (SELECT 1 FROM collections c WHERE c.post_id = p.id) GROUP BY k`,
+    ),
     topics: topics.results,
     tags: tags.results,
     last_capture: lastSync?.value ?? null,
@@ -144,6 +159,12 @@ export async function queryPosts(env: Env, q: URLSearchParams): Promise<Row> {
   if (topic) {
     where.push('EXISTS (SELECT 1 FROM label_topics t WHERE t.post_id = p.id AND t.topic = ?)');
     params.push(normalizeTag(topic));
+  }
+  const format = q.get('format');
+  if (format) {
+    if (!FORMATS.includes(format)) throw new HttpError(400, `format must be one of: ${FORMATS.join(', ')}`);
+    where.push(`${FORMAT_SQL} = ?`);
+    params.push(format);
   }
   if (q.get('labeled') === 'false') where.push('l.post_id IS NULL');
   if (q.get('hide_noise') !== 'false' && q.get('intent') !== 'noise') {

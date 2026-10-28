@@ -132,7 +132,8 @@ This opens <http://127.0.0.1:48924> in your browser. It is your workbench for ev
 saved, and it shows the same data Claude sees:
 
 - **Next up:** your best things to try, build and learn, with must-dos highlighted.
-- **All posts:** search plus filters by collection, kind, usefulness, progress and topic.
+- **All posts:** search plus filters by collection, kind, format (article, text only, image,
+  video), usefulness, progress and topic.
   Noise is hidden unless you ask for it.
 - **Board:** move posts from *To do* to *Doing* to *Done* by dragging or with buttons.
 - **Post details:** the full text, images and playable videos, quoted posts and links, plus
@@ -192,7 +193,8 @@ computer.
 | `next_up` | "What should I try, build or learn next?", best labelled posts first. |
 | `set_post_status`, `triage_progress` | Track what you're doing or have done; label stats. |
 
-Search and browse also filter by label: `intent`, `min_usefulness`, `topic`, `status`.
+Search and browse also filter by label (`intent`, `min_usefulness`, `topic`, `status`) and by
+`format`: `article` (X Articles), `video`, `image` or `text` (text only).
 
 ### Label everything: what's worth doing?
 

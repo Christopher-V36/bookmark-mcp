@@ -34,7 +34,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 import segno
 
 from bookmark_mcp import __version__, config, triage
-from bookmark_mcp.db import Database, fts_query
+from bookmark_mcp.db import FORMAT_SQL, FORMATS, Database, fts_query
 from bookmark_mcp.httpserver import LocalHTTPServer
 from bookmark_mcp.tools import resolve_collection
 
@@ -78,9 +78,11 @@ def _media_url(relative: str | None) -> str | None:
 
 def _labels_from_query(query: dict[str, str]) -> dict:
     labels: dict = {}
-    for key in ("intent", "effort", "status", "topic"):
+    for key in ("intent", "effort", "status", "topic", "format"):
         if query.get(key):
             labels[key] = query[key]
+    if labels.get("format") not in (None, *FORMATS):
+        raise ApiError(400, f"format must be one of: {', '.join(FORMATS)}")
     if query.get("min_usefulness", "") != "":
         try:
             labels["min_usefulness"] = max(0, min(3, int(query["min_usefulness"])))
@@ -252,6 +254,14 @@ def overview(db: Database) -> dict:
         "usefulness": progress["by_usefulness"],
         "statuses": progress["by_status"],
         "efforts": progress["by_effort"],
+        "formats": {
+            row["format"]: row["count"]
+            for row in db._rows(
+                f"SELECT {FORMAT_SQL} AS format, COUNT(*) AS count FROM posts p "
+                "WHERE EXISTS (SELECT 1 FROM collections c WHERE c.post_id=p.id) "
+                "GROUP BY format"
+            )
+        },
         "topics": db._rows(
             "SELECT topic, COUNT(*) AS count FROM triage_topics GROUP BY topic "
             "ORDER BY count DESC, topic LIMIT 40"

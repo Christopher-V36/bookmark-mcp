@@ -25,6 +25,17 @@ from bookmark_mcp.models import Folder, Membership, Post
 
 logger = logging.getLogger(__name__)
 
+# What a post mainly is, for the "format" filter: an X Article, else a post with a video
+# (or GIF), else with images, else text only. Link preview cards don't count as images.
+FORMATS = ("article", "video", "image", "text")
+FORMAT_SQL = (
+    "CASE WHEN p.article_title IS NOT NULL THEN 'article' "
+    "WHEN EXISTS (SELECT 1 FROM media fm WHERE fm.post_id=p.id "
+    "AND fm.kind IN ('video', 'gif')) THEN 'video' "
+    "WHEN EXISTS (SELECT 1 FROM media fm WHERE fm.post_id=p.id AND fm.kind='photo') "
+    "THEN 'image' ELSE 'text' END"
+)
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS raw_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -576,6 +587,11 @@ class Database:
                 "EXISTS (SELECT 1 FROM triage_topics tt WHERE tt.post_id=p.id AND tt.topic=?)"
             )
             params.append(normalize_tag(str(labels["topic"])))
+        if "format" in labels:
+            if labels["format"] not in FORMATS:
+                raise ValueError(f"format must be one of: {', '.join(FORMATS)}")
+            where.append(f"{FORMAT_SQL} = ?")
+            params.append(labels["format"])
         if collection:
             where.append(
                 "EXISTS (SELECT 1 FROM collections c WHERE c.post_id=p.id AND c.collection=?)"

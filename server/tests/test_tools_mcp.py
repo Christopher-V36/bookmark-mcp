@@ -61,6 +61,8 @@ def test_search_browse_and_gather(loaded):
     assert tools.search_posts(loaded, "agents unicorns")["hint"]
     page = tools.browse(loaded, "bookmarks", limit=2, offset=1)
     assert [r["id"] for r in page["results"]] == ["x:101", "x:102"]
+    videos = tools.browse(loaded, "bookmarks", labels={"format": "video"})
+    assert [r["id"] for r in videos["results"]] == ["x:101"]
     topic = tools.gather_topic(loaded, "chart")
     assert topic["matched_by"] == "search" and topic["count"] == 2
     assert [c["name"] for c in tools.list_collections(loaded)] == ["bookmarks", "AI"]
