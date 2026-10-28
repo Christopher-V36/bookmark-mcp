@@ -34,10 +34,11 @@ others are next. The design is platform-agnostic from day one.
   sends requests of its own. It copies the responses your browser already received while you
   scrolled. An optional *Load all* button simply scrolls the page for you, slowly.
 - **Free:** no X API, no paid services.
-- **Private:** everything stays on your computer in `%LOCALAPPDATA%\bookmark-mcp`
-  (Windows) / `~/.local/share/bookmark-mcp` (Linux) / `~/Library/Application Support/bookmark-mcp`
-  (macOS). The only outgoing connections are to X's image CDN (to download images of your saved
-  posts) and, only if you run `bookmark-mcp enrich`, to the websites your saved posts link to.
+- **Private:** everything stays on your computer in `~/.bookmark-mcp`
+  (`C:\Users\<you>\.bookmark-mcp` on Windows; set `BOOKMARK_MCP_HOME` to use another folder).
+  The only outgoing connections are to X's image CDN (to download images of your saved posts),
+  only if you run `bookmark-mcp enrich` to the websites your saved posts link to, and only if
+  you set up the optional [cloud copy](#cloud-copy-optional) to your own Cloudflare account.
 - **Future-proof:** every captured response is stored untouched. When X changes its format, a
   parser fix plus `bookmark-mcp reparse` rebuilds everything, and nothing is lost.
 
@@ -150,6 +151,28 @@ Your computer must be on, because the data stays there.
 It is local only: it listens on 127.0.0.1, refuses requests from other websites, and loads no
 fonts or scripts from the internet.
 
+### Cloud copy (optional)
+
+To use the web app from your phone anywhere, even when your computer is off, keep a copy in
+your own **free** Cloudflare account (a Worker plus a D1 database; no card needed). Your
+computer still captures, labels and downloads images. Every 5 minutes it pulls the changes
+you made in the cloud (labels, status, notes, tags), then uploads what changed locally.
+
+1. Create a free account at <https://dash.cloudflare.com/sign-up>, then from the `cloud`
+   folder run `npm ci` and `npx wrangler login`.
+2. `bookmark-mcp cloud deploy` creates the database and the Worker, then prints your address
+   (`https://bookmark-mcp.<you>.workers.dev`).
+3. `bookmark-mcp cloud password` sets the e-mail and password you log in with. Only a salted
+   PBKDF2 hash is sent.
+4. `bookmark-mcp cloud sync` uploads everything now. Later syncs happen on their own while
+   Claude or `bookmark-mcp web` runs.
+5. Open the address on your phone, log in, and use **Add to Home screen**.
+
+`bookmark-mcp cloud status` shows what the cloud holds. Running `deploy` again updates the
+Worker. Only the resized image copies are uploaded (about 100 KB each), so a few thousand saved
+posts fit well inside the free plan. Edits made on the phone win over older ones from the
+computer.
+
 ### MCP tools
 
 | Tool | What it does |
@@ -202,6 +225,7 @@ Afterwards just ask "what should I try next?", "give me quick things to learn ab
 | `bookmark-mcp import FILE.json` | Import a [twitter-web-exporter](https://github.com/prinsss/twitter-web-exporter) JSON export (tick *Include all metadata*). |
 | `bookmark-mcp reparse` | Rebuild posts from stored captures after an update. |
 | `bookmark-mcp doctor` | Check the setup. |
+| `bookmark-mcp cloud deploy / password / sync / status` | Manage the optional [cloud copy](#cloud-copy-optional). |
 
 ## Security notes
 
@@ -211,6 +235,9 @@ Afterwards just ask "what should I try next?", "give me quick things to learn ab
   from public IP addresses (checked again on every redirect), and with size and type limits.
 - Posts are written by other people. The MCP tools tell the model to treat post content as data,
   not instructions. Still, be thoughtful about which other tools you let the same agent use.
+- Cloud copy: the Worker requires a login for everything except the login page. Sessions are
+  HttpOnly, Secure, SameSite=Strict cookies, failed logins are rate-limited, and the computer
+  syncs with a separate random token. Images are served only to logged-in sessions.
 - `scripts/check_private_data.py` runs in CI and refuses databases, captures, images, secrets and
   e-mail addresses in the repository.
 
@@ -219,6 +246,7 @@ Afterwards just ask "what should I try next?", "give me quick things to learn ab
 ```bash
 cd server && .venv/Scripts/python -m pip install -e ".[dev]" && .venv/Scripts/python -m pytest
 cd extension && npm test && npm run typecheck
+cd cloud && npm test && npm run typecheck
 ```
 
 All test data is synthetic. See [docs/adding-a-platform.md](docs/adding-a-platform.md) to add

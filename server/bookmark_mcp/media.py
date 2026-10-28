@@ -11,6 +11,7 @@ import io
 import logging
 import re
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -156,8 +157,9 @@ def local_file(relative: str | None) -> Path | None:
 class MediaWorker:
     """Background thread that downloads new images after each capture."""
 
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, after: Callable[[], None] | None = None) -> None:
         self.db = db
+        self.after = after  # called after each round, e.g. to start a cloud sync
         self._wake = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True, name="media-worker")
         self._thread.start()
@@ -175,3 +177,5 @@ class MediaWorker:
                     logger.info("Media download: %s", counts)
             except Exception:
                 logger.exception("Media worker failed")
+            if self.after is not None:
+                self.after()

@@ -14,7 +14,7 @@ from mcp.server.fastmcp import FastMCP, Image
 from bookmark_mcp import config, tools, triage
 from bookmark_mcp.db import Database
 from bookmark_mcp.ingest_api import IngestServer
-from bookmark_mcp.media import MediaWorker
+from bookmark_mcp.services import start_capture_services
 
 logger = logging.getLogger(__name__)
 
@@ -345,18 +345,13 @@ def triage_bookmarks(collection: str = "", batch_size: str = "25") -> str:
 
 
 def start_background_services() -> IngestServer | None:
-    worker = MediaWorker(db())
-    worker.schedule()  # pick up anything left from earlier runs
-    try:
-        server = IngestServer(
-            db(), config.token(), port=config.port(), on_ingested=worker.schedule
-        ).start()
-    except OSError:
+    server = start_capture_services(db())
+    if server is None:
         logger.info(
             "Port %s busy: another bookmark-mcp is already receiving captures", config.port()
         )
         return None
-    return server
+    return server.start()
 
 
 def run() -> None:

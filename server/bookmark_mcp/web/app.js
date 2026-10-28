@@ -188,7 +188,17 @@ function renderRail() {
         : null),
   );
   $("#filters").replaceChildren(...groups);
-  $("#sync").textContent = o.last_capture ? `Last capture ${formatDate(o.last_capture)}` : "Nothing captured yet";
+  const sync = $("#sync");
+  sync.replaceChildren(o.last_capture ? `Last capture ${formatDate(o.last_capture)}` : "Nothing captured yet");
+  if (o.cloud) {
+    sync.append(h("br"), h("button", {
+      class: "topics-more",
+      onclick: async () => {
+        await fetch("/logout", { method: "POST" });
+        location.href = "/login";
+      },
+    }, "Log out"));
+  }
 }
 
 // --- rows ----------------------------------------------------------------------------
@@ -447,7 +457,7 @@ async function changeStatus(id, status) {
   try {
     await api(`/api/posts/${encodeURIComponent(id)}/status`, { method: "PUT", body: { status } });
     toast(`Moved to ${STATUSES.find(([s]) => s === status)[1]}`);
-    await refresh();
+    await refresh({ keepDrawer: true });
   } catch (error) {
     toast(error.message, true);
   }

@@ -1,0 +1,21 @@
+{
+  "name": "bookmark-mcp-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker that serves bookmark-mcp's web app from the cloud (D1 + Workers, free plan).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && wrangler dev --local --port 8787",
+    "deploy": "node build.mjs && wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261027.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.154.0"
+  }
+}

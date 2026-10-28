@@ -10,6 +10,10 @@ build/
 dist/
 
 # Node / extension
+cloud/wrangler.toml
+cloud/.wrangler/
+cloud/dist/
+.dev.vars
 node_modules/
 extension/dist/
 *.zip

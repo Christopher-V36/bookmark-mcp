@@ -281,3 +281,15 @@ def test_phone_info_on_the_computer(db, monkeypatch):
         }
     finally:
         local_only.stop()
+
+
+def test_referrer_policy_lets_browsers_send_their_origin(web):
+    # With "no-referrer" browsers send `Origin: null` on same-site edits, which the
+    # same-origin check would refuse.
+    _, _, response = call(web, "GET", "/")
+    assert response.getheader("Referrer-Policy") == "same-origin"
+    origin = {"Origin": f"http://127.0.0.1:{web.port}", "Sec-Fetch-Site": "same-origin"}
+    status, _, _ = call(
+        web, "PUT", "/api/posts/x:100/status", {"status": "doing"}, {**CHANGE, **origin}
+    )
+    assert status == 200
