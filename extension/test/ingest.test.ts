@@ -45,11 +45,20 @@ describe('sendToApp', () => {
   const body = buildIngestBody(capture)!;
 
   it('posts with the pairing token', async () => {
-    const { impl, calls } = fakeFetch(200, { posts: 3, collections: ['bookmarks'] });
+    const { impl, calls } = fakeFetch(200, {
+      posts: 3,
+      new_in_collections: 2,
+      collections: ['bookmarks'],
+    });
     expect(await sendToApp(settings, body, impl)).toEqual({
       ok: true,
       posts: 3,
+      newPosts: 2,
       collections: ['bookmarks'],
+    });
+    // an older app that doesn't report new posts
+    expect(await sendToApp(settings, body, fakeFetch(200, { posts: 3 }).impl)).toMatchObject({
+      newPosts: null,
     });
     expect(calls[0]?.url).toBe('http://127.0.0.1:48923/ingest');
     expect((calls[0]?.init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');

@@ -24,6 +24,17 @@ export interface CaptureMessage {
   body: string;
 }
 
+/**
+ * The worker's answer to a capture: delivered to the app (with how much of it was new),
+ * queued because the app is not running, or skipped (capture turned off, not JSON).
+ */
+export interface CaptureReply {
+  ok: true;
+  status: 'delivered' | 'queued' | 'skipped';
+  posts: number;
+  newPosts: number | null;
+}
+
 export interface Settings {
   serverUrl: string;
   token: string;
@@ -61,14 +72,23 @@ export type WorkerRequest =
   | { type: 'test-connection' }
   | { type: 'flush' };
 
+/** "all" scrolls to the end; "new" stops at the first page of posts you already had. */
+export type ScrollMode = 'all' | 'new';
+
+/** Why the last run stopped: the end of the list, posts already saved, or no app to ask. */
+export type ScrollStopReason = 'end' | 'caught-up' | 'offline' | 'stopped';
+
 export type TabRequest =
-  | { type: 'autoscroll-start' }
+  | { type: 'autoscroll-start'; mode?: ScrollMode }
   | { type: 'autoscroll-stop' }
   | { type: 'autoscroll-status' };
 
 export interface AutoScrollStatus {
   running: boolean;
+  mode: ScrollMode;
   rounds: number;
   captures: number;
-  finished: boolean;
+  /** Posts this tab added to your collections, as the app reported. */
+  newPosts: number;
+  reason: ScrollStopReason | null;
 }

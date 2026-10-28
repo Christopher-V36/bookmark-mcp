@@ -59,6 +59,14 @@ def test_valid_capture_is_ingested(server, db):
     assert len(server.received) == 1 and server.received[0].new_in_collections == 7
 
 
+def test_reply_says_how_many_posts_are_new(server):
+    # the extension's "Load new" stops at the first page with nothing new
+    _, first = _request(server, "POST", "/ingest", _capture(), AUTH)
+    _, again = _request(server, "POST", "/ingest", _capture(), AUTH)
+    assert first["new_in_collections"] == 7
+    assert again["posts"] == 8 and again["new_in_collections"] == 0
+
+
 def test_health_reports_counts(server):
     _request(server, "POST", "/ingest", _capture(), AUTH)
     status, body = _request(server, "GET", "/health", headers=AUTH)

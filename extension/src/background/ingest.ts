@@ -40,7 +40,8 @@ export function normalizeServerUrl(value: string): string {
 }
 
 export type SendResult =
-  | { ok: true; posts: number; collections: string[] }
+  /** newPosts: posts not yet in those collections (null when the app doesn't say). */
+  | { ok: true; posts: number; newPosts: number | null; collections: string[] }
   | { ok: false; retry: boolean; error: string };
 
 export async function sendToApp(
@@ -79,9 +80,15 @@ export async function sendToApp(
   }
   const reply = (await response.json().catch(() => ({}))) as {
     posts?: number;
+    new_in_collections?: number;
     collections?: string[];
   };
-  return { ok: true, posts: reply.posts ?? 0, collections: reply.collections ?? [] };
+  return {
+    ok: true,
+    posts: reply.posts ?? 0,
+    newPosts: typeof reply.new_in_collections === 'number' ? reply.new_in_collections : null,
+    collections: reply.collections ?? [],
+  };
 }
 
 export async function checkHealth(

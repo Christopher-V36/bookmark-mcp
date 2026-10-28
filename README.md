@@ -32,7 +32,7 @@ others are next. The design is platform-agnostic from day one.
 
 - **No ban risk from extra traffic:** the extension never logs in, never calls X's API and never
   sends requests of its own. It copies the responses your browser already received while you
-  scrolled. An optional *Load all* button simply scrolls the page for you, slowly.
+  scrolled. Optional *Load new* and *Load all* buttons simply scroll the page for you, slowly.
 - **Free:** no X API, no paid services.
 - **Private:** everything stays on your computer in `~/.bookmark-mcp`
   (`C:\Users\<you>\.bookmark-mcp` on Windows; set `BOOKMARK_MCP_HOME` to use another folder).
@@ -111,7 +111,11 @@ and delivers them later.
 
 1. Open <https://x.com/i/bookmarks> (or a bookmark folder, or your Likes) and **reload the page**
    once after installing the extension.
-2. Scroll, or press **Load all** in the extension popup, which scrolls to the end slowly.
+2. Scroll, or use the extension popup:
+   - **Load all** scrolls slowly to the very end. Use it the first time.
+   - **Load new** scrolls only until it reaches posts you already saved. X lists the newest
+     first, so this is all you need afterwards. It needs Claude or `bookmark-mcp web` running
+     to know which posts are new.
 3. Ask Claude. Examples:
    - "Search my saved posts about prompt caching and summarise what people recommend."
    - "Show me the images of the post <https://x.com/someone/status/123>."

@@ -66,24 +66,36 @@ function renderStatus(reply: StatusReply): void {
   );
 }
 
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
 function renderScroll(status: AutoScrollStatus | null): void {
   const text = $('scroll-status');
-  const start = $('scroll-start') as HTMLButtonElement;
+  const buttons = ['scroll-new', 'scroll-all'].map((id) => $(id) as HTMLButtonElement);
   const stop = $('scroll-stop') as HTMLButtonElement;
   if (!status) {
     text.textContent = 'Open x.com/i/bookmarks, a bookmark folder or your Likes, then reload it.';
-    start.disabled = true;
+    for (const button of buttons) button.disabled = true;
     stop.disabled = true;
     return;
   }
-  start.disabled = status.running;
+  for (const button of buttons) button.disabled = status.running;
   stop.disabled = !status.running;
+  const pages = plural(status.captures, 'page');
+  const saved = `${plural(status.newPosts, 'new post')} saved`;
   if (status.running) {
-    text.textContent = `Scrolling… ${status.rounds} rounds, ${status.captures} pages captured`;
-  } else if (status.finished) {
-    text.textContent = `Done: reached the end (${status.captures} pages captured).`;
+    text.textContent = `Scrolling… ${pages} captured, ${saved}.`;
+  } else if (status.reason === 'caught-up') {
+    text.textContent = `Up to date: ${saved}, then reached posts you already had.`;
+  } else if (status.reason === 'offline') {
+    text.textContent =
+      "Stopped: the app isn't running, so it can't tell which posts are new. " +
+      'Start Claude or `bookmark-mcp web`, then try again.';
+  } else if (status.reason === 'end') {
+    text.textContent = `Done: reached the end (${pages} captured, ${saved}).`;
   } else {
-    text.textContent = `${status.captures} pages captured on this tab.`;
+    text.textContent = `${pages} captured on this tab, ${saved}.`;
   }
 }
 
@@ -109,8 +121,11 @@ async function main(): Promise<void> {
     renderStatus(await ask<StatusReply>({ type: 'flush' }));
     setConnection(await ask<HealthReply>({ type: 'test-connection' }));
   });
-  $('scroll-start').addEventListener('click', async () =>
-    renderScroll(await askTab({ type: 'autoscroll-start' })),
+  $('scroll-new').addEventListener('click', async () =>
+    renderScroll(await askTab({ type: 'autoscroll-start', mode: 'new' })),
+  );
+  $('scroll-all').addEventListener('click', async () =>
+    renderScroll(await askTab({ type: 'autoscroll-start', mode: 'all' })),
   );
   $('scroll-stop').addEventListener('click', async () =>
     renderScroll(await askTab({ type: 'autoscroll-stop' })),

@@ -5,7 +5,13 @@
  */
 
 import { defaultEnabled } from '../platforms/x';
-import type { Settings, Stats, StatusReply, WorkerRequest } from '../shared/messages';
+import type {
+  CaptureReply,
+  Settings,
+  Stats,
+  StatusReply,
+  WorkerRequest,
+} from '../shared/messages';
 import { DEFAULT_SERVER_URL, buildIngestBody, checkHealth, sendToApp } from './ingest';
 import * as queue from './queue';
 
@@ -55,6 +61,9 @@ async function refreshBadge(): Promise<void> {
 }
 
 let flushing: Promise<void> | null = null;
+/** What the app said about recently delivered captures, by queue id (kept briefly). */
+const delivered = new Map<number, { posts: number; newPosts: number | null }>();
+const DELIVERED_KEPT = 200;
 
 function flush(): Promise<void> {
   flushing ??= (async () => {
@@ -67,6 +76,10 @@ function flush(): Promise<void> {
           const result = await sendToApp(settings, item.body);
           if (result.ok) {
             await queue.remove(item.id);
+            delivered.set(item.id, { posts: result.posts, newPosts: result.newPosts });
+            if (delivered.size > DELIVERED_KEPT) {
+              delivered.delete(delivered.keys().next().value as number);
+            }
             await updateStats((stats) => {
               stats.sent += 1;
               stats.lastSentAt = new Date().toISOString();
@@ -98,16 +111,26 @@ function flush(): Promise<void> {
   return flushing;
 }
 
-async function handleCapture(message: Extract<WorkerRequest, { type: 'capture' }>) {
+async function handleCapture(
+  message: Extract<WorkerRequest, { type: 'capture' }>,
+): Promise<CaptureReply> {
   const settings = await getSettings();
-  if (settings.enabled[message.operation.toLowerCase()] === false) return;
+  if (settings.enabled[message.operation.toLowerCase()] === false) {
+    return { ok: true, status: 'skipped', posts: 0, newPosts: null };
+  }
   const body = buildIngestBody(message);
-  if (!body) return;
-  await queue.enqueue(body);
+  if (!body) return { ok: true, status: 'skipped', posts: 0, newPosts: null };
+  const id = (await queue.enqueue(body)) as number;
   await updateStats((stats) => {
     stats.captured += 1;
   });
   await flush();
+  // A flush that was already finishing may have missed this item: run one more.
+  if (!delivered.has(id)) await flush();
+  const result = delivered.get(id);
+  if (!result) return { ok: true, status: 'queued', posts: 0, newPosts: null };
+  delivered.delete(id);
+  return { ok: true, status: 'delivered', ...result };
 }
 
 async function status(): Promise<StatusReply> {
@@ -119,8 +142,7 @@ chrome.runtime.onMessage.addListener((request: WorkerRequest, _sender, sendRespo
   const reply = (async () => {
     switch (request.type) {
       case 'capture':
-        await handleCapture(request);
-        return { ok: true };
+        return handleCapture(request);
       case 'status':
         return status();
       case 'save-settings': {
