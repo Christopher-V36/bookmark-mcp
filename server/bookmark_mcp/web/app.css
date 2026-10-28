@@ -15,11 +15,11 @@
 }
 
 :root {
-  --paper: #eef2ef;
-  --sheet: #f8faf8;
-  --ink: #14302b;
-  --graphite: #56665f;
-  --rule: #cbd5cf;
+  --paper: #f2f2f0;
+  --sheet: #fbfbfa;
+  --ink: #161616;
+  --graphite: #5e5e5e;
+  --rule: #d6d6d3;
   --marker: #f5e663;
   --marker-soft: #f9f1b4;
   --focus: #2f6fd6;
@@ -27,7 +27,7 @@
   --build: #7046b8;
   --learn: #2a5fbf;
   --reference: #67792a;
-  --quiet: #8a9691;
+  --quiet: #8d8d8d;
   --danger: #b3261e;
 
   --ui: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
@@ -42,11 +42,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #101c19;
-    --sheet: #16241f;
-    --ink: #dfe9e4;
-    --graphite: #9aaba4;
-    --rule: #2c3d37;
+    --paper: #0d0d0d;
+    --sheet: #171717;
+    --ink: #e8e8e8;
+    --graphite: #a3a3a3;
+    --rule: #2f2f2f;
     --marker: #d9c43c;
     --marker-soft: #5c5525;
     --focus: #7aa7ff;
@@ -54,7 +54,7 @@
     --build: #b394f0;
     --learn: #7ea6f2;
     --reference: #b0c46a;
-    --quiet: #6f7f79;
+    --quiet: #767676;
     --danger: #ff8a80;
   }
 }
@@ -212,7 +212,7 @@ select, .toggle {
 .headline .mark { padding: 0 3px; margin: 0 -3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .u3 .headline .mark { background: linear-gradient(transparent 12%, var(--marker) 12%, var(--marker) 88%, transparent 88%); }
 .u2 .headline .mark { background: linear-gradient(transparent 62%, var(--marker-soft) 62%); }
-.u3 .headline .mark, .tally .must b { color: #14302b; }
+.u3 .headline .mark, .tally .must b { color: #161616; }
 .action { margin: 3px 0 0; color: var(--graphite); max-width: 72ch; }
 .raw-text { margin: 3px 0 0; color: var(--graphite); font-family: var(--read); font-size: var(--step--1); max-width: 72ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .meta { margin-top: 7px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: var(--step--1); color: var(--graphite); }
@@ -303,7 +303,7 @@ fieldset.field { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
   font-size: var(--step--1);
 }
 .segmented button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.segmented.useful button[data-value="3"][aria-pressed="true"] { background: var(--marker); color: #14302b; border-color: var(--marker); }
+.segmented.useful button[data-value="3"][aria-pressed="true"] { background: var(--marker); color: #161616; border-color: var(--marker); }
 .text-input, textarea {
   width: 100%;
   border: 1px solid var(--rule);
